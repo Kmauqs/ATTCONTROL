@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/app_version.dart';
 import '../../../core/config/env.dart';
 import '../../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
@@ -126,6 +127,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                kAppVersionLabel,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.7),
+                  fontSize: 12,
                 ),
               ),
             ],

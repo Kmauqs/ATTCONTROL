@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:attcontrol/core/models/models.dart';
+import 'package:attcontrol/core/router/route_guards.dart';
 import 'package:attcontrol/core/theme/app_theme.dart';
 import 'package:attcontrol/core/utils/geofence.dart';
 import 'package:attcontrol/core/utils/labor_calc.dart';
@@ -83,5 +84,47 @@ void main() {
     expect(validatePassword('corta', required: true), isNotNull);
     expect(validatePassword('segura123', required: true), isNull);
     expect(validatePassword('', required: false), isNull);
+  });
+
+  test('empleado no entra a QR ni a personal', () {
+    expect(
+      resolveAppRedirect(
+        bootstrapping: false,
+        isLoggedIn: true,
+        rol: UserRol.empleado,
+        location: '/qr',
+      ),
+      '/home',
+    );
+    expect(
+      resolveAppRedirect(
+        bootstrapping: false,
+        isLoggedIn: true,
+        rol: UserRol.empleado,
+        location: '/personnel/new',
+      ),
+      '/home',
+    );
+    expect(
+      resolveAppRedirect(
+        bootstrapping: false,
+        isLoggedIn: true,
+        rol: UserRol.supervisor,
+        location: '/qr',
+      ),
+      isNull,
+    );
+  });
+
+  test('sin sesión se envía al login', () {
+    expect(
+      resolveAppRedirect(
+        bootstrapping: false,
+        isLoggedIn: false,
+        rol: null,
+        location: '/home',
+      ),
+      '/login',
+    );
   });
 }

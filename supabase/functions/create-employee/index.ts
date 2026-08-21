@@ -35,7 +35,8 @@ Deno.serve(async (req: Request) => {
     const documento = String(body.documento ?? '').trim();
     const correo = String(body.correo ?? '').trim();
     const password = String(body.password ?? '').trim();
-    const existingId = String(body.id ?? '').trim();
+    const requestedId = String(body.id ?? '').trim();
+    let existingId = requestedId;
     const rol = String(body.rol ?? 'empleado');
     if (!documento) return json({ error: 'Documento requerido' }, 400);
     if (rol === 'super_admin' && actor.rol !== 'super_admin') {
@@ -56,6 +57,13 @@ Deno.serve(async (req: Request) => {
       location_id: body.location_id ?? '11111111-1111-1111-1111-111111111111',
       shift_id: body.shift_id ?? '22222222-2222-2222-2222-222222222222',
     };
+
+    if (existingId) {
+      const { data: existingUser } = await admin.auth.admin.getUserById(existingId);
+      if (!existingUser?.user) {
+        existingId = '';
+      }
+    }
 
     if (existingId) {
       if (password && password.length < MIN_PASSWORD) {
@@ -81,8 +89,13 @@ Deno.serve(async (req: Request) => {
     }
 
     if (password.length < MIN_PASSWORD) {
+      const missingAccount = requestedId && !existingId;
       return json(
-        { error: `Contraseña de al menos ${MIN_PASSWORD} caracteres` },
+        {
+          error: missingAccount
+            ? 'Esta ficha no tiene cuenta de acceso. Indica una contraseña para crearla.'
+            : `Contraseña de al menos ${MIN_PASSWORD} caracteres`,
+        },
         400,
       );
     }

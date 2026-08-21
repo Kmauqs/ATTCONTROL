@@ -86,6 +86,13 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
   }
 
   Future<void> _load() async {
+    final actor = ref.read(authControllerProvider).profile;
+    if (actor == null || !actor.rol.isStaff) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) Navigator.of(context).pop();
+      });
+      return;
+    }
     if (widget.id == null) return;
     final list = await ref.read(appRepositoryProvider).listPersonnel();
     final p = list.where((e) => e.id == widget.id).firstOrNull;

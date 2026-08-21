@@ -201,7 +201,11 @@ class AppRepository {
         final err = res.data is Map ? res.data['error'] : null;
         throw Exception(err ?? 'No se pudo guardar el personal');
       }
-      final id = (res.data as Map)['id'] as String? ?? profile.id;
+      final data = res.data is Map ? Map<String, dynamic>.from(res.data as Map) : <String, dynamic>{};
+      final id = data['id'] as String? ?? profile.id;
+      if (id.isEmpty) {
+        throw Exception('No se pudo crear la cuenta de acceso');
+      }
       saved = UserProfile(
         id: id,
         documento: profile.documento,
@@ -217,6 +221,9 @@ class AppRepository {
         shiftId: profile.shiftId,
         activo: profile.activo,
       );
+      if (!isNew && profile.id.isNotEmpty && profile.id != saved.id) {
+        await db.delete('profiles', where: 'id = ?', whereArgs: [profile.id]);
+      }
     } else if (isNew) {
       saved = UserProfile(
         id: _uuid.v4(),

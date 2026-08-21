@@ -10,6 +10,7 @@ import '../../features/personnel/presentation/personnel_screens.dart';
 import '../../features/personnel/presentation/presence_screen.dart';
 import '../../features/reports/presentation/reports_screen.dart';
 import '../../features/settings/presentation/labor_settings_screen.dart';
+import '../config/app_version.dart';
 import '../models/models.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -75,12 +76,25 @@ class _AppShellState extends ConsumerState<AppShell> {
     final index = _index.clamp(0, dests.length - 1);
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Image.asset('assets/branding/icon_64.png', width: 32, height: 32),
-            const SizedBox(width: 8),
-            const Text('ATTCONTROL'),
-          ],
+        title: InkWell(
+          onTap: () => _showAbout(context),
+          child: Row(
+            children: [
+              Image.asset('assets/branding/icon_64.png', width: 32, height: 32),
+              const SizedBox(width: 8),
+              const Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('ATTCONTROL'),
+                  Text(
+                    kAppVersionLabel,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           if (profile.rol.canScanQr)
@@ -103,6 +117,25 @@ class _AppShellState extends ConsumerState<AppShell> {
         destinations: [
           for (final d in dests)
             NavigationDestination(icon: Icon(d.icon), label: d.label),
+        ],
+      ),
+    );
+  }
+
+  void _showAbout(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('ATTCONTROL'),
+        content: Text(
+          'Esta aplicación registra la entrada y la salida del personal '
+          'en el sitio de trabajo.\n\n$kAppVersionLabel',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cerrar'),
+          ),
         ],
       ),
     );

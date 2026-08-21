@@ -27,6 +27,13 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
     _handled = true;
     final actor = ref.read(authControllerProvider).profile;
     if (actor == null) return;
+    if (!actor.rol.canScanQr) {
+      setState(() {
+        _message = 'No autorizado a escanear carnets';
+        _handled = false;
+      });
+      return;
+    }
     try {
       final target =
           await ref.read(appRepositoryProvider).findProfile(raw.trim());
