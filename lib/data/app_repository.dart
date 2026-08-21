@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite/sqflite.dart';
@@ -220,6 +222,8 @@ class AppRepository {
         locationId: profile.locationId,
         shiftId: profile.shiftId,
         activo: profile.activo,
+        fotoPath: profile.fotoPath,
+        carnetPath: profile.carnetPath,
       );
       if (!isNew && profile.id.isNotEmpty && profile.id != saved.id) {
         await db.delete('profiles', where: 'id = ?', whereArgs: [profile.id]);
@@ -239,6 +243,8 @@ class AppRepository {
         locationId: profile.locationId,
         shiftId: profile.shiftId,
         activo: profile.activo,
+        fotoPath: profile.fotoPath,
+        carnetPath: profile.carnetPath,
       );
     }
     final map = saved.toMap();
@@ -285,6 +291,106 @@ class AppRepository {
       } catch (_) {}
     }
     return null;
+  }
+
+  Future<List<WorkSite>> listSites({bool onlyActive = true}) async {
+    if (remote && await _online()) {
+      try {
+        final rows = onlyActive
+            ? await supabase!
+                .from('locations')
+                .select()
+                .eq('activo', true)
+                .order('nombre')
+            : await supabase!.from('locations').select().order('nombre');
+        final list = (rows as List)
+            .map((e) => WorkSite.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        final db = await _local.db;
+        for (final site in list) {
+          await db.insert(
+            'locations',
+            site.toLocalMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        return list;
+      } catch (_) {}
+    }
+    final db = await _local.db;
+    final rows = onlyActive
+        ? await db.query('locations', where: 'activo IS NULL OR activo = 1')
+        : await db.query('locations', orderBy: 'nombre');
+    return rows.map(WorkSite.fromMap).toList();
+  }
+
+  Future<WorkSite> upsertSite(WorkSite site) async {
+    final db = await _local.db;
+    await db.insert(
+      'locations',
+      site.toLocalMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    if (remote) {
+      await supabase!.from('locations').upsert(site.toRemoteMap());
+    }
+    return site;
+  }
+
+  Future<void> setSiteActive(String id, bool activo) async {
+    final db = await _local.db;
+    await db.update(
+      'locations',
+      {'activo': activo ? 1 : 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (remote) {
+      await supabase!.from('locations').update({'activo': activo}).eq('id', id);
+    }
+  }
+
+  Future<String?> signedFileUrl(String? path) async {
+    if (path == null || path.isEmpty || !remote) return null;
+    try {
+      return await supabase!.storage
+          .from('personnel-files')
+          .createSignedUrl(path, 60 * 60);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<UserProfile> uploadPersonnelFile({
+    required UserProfile profile,
+    required String kind,
+    required Uint8List bytes,
+    required String contentType,
+  }) async {
+    if (!remote) {
+      throw Exception('Necesitas conexión para cargar la foto o el carnet');
+    }
+    final ext = contentType.contains('pdf') ? 'pdf' : 'jpg';
+    final path = '${profile.id}/$kind.$ext';
+    await supabase!.storage.from('personnel-files').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: contentType),
+        );
+    final field = kind == 'carnet' ? 'carnet_path' : 'foto_path';
+    await supabase!.from('profiles').update({field: path}).eq('id', profile.id);
+    final updated = profile.copyWith(
+      fotoPath: kind == 'foto' ? path : profile.fotoPath,
+      carnetPath: kind == 'carnet' ? path : profile.carnetPath,
+    );
+    final db = await _local.db;
+    await db.update(
+      'profiles',
+      {field: path},
+      where: 'id = ?',
+      whereArgs: [profile.id],
+    );
+    return updated;
   }
 
   Future<Shift?> shiftFor(UserProfile profile) async {
@@ -457,26 +563,30 @@ class AppRepository {
     required double lng,
     String source = 'app',
   }) async {
-    final site = await siteFor(target);
-    if (site == null) {
+    final skipFence = target.rol.canSkipGeofence;
+    final sites = (await listSites()).where((s) => s.activo).toList();
+    final inside = skipFence ||
+        isInsideAnyGeofence(
+          user: GeoPoint(lat, lng),
+          sites: [
+            for (final s in sites)
+              (lat: s.lat, lng: s.lng, radiusMeters: s.radioMetros),
+          ],
+        );
+    if (!skipFence && sites.isEmpty) {
       return const PunchResult(
         ok: false,
-        message: 'No hay sitio asignado para validar el GPS',
+        message: 'No hay sitios autorizados para validar el GPS',
+      );
+    }
+    if (!inside) {
+      return const PunchResult(
+        ok: false,
+        message:
+            'Fuera de las oficinas y proyectos autorizados. Acércate a un sitio para fichar.',
       );
     }
     final shift = await shiftFor(target);
-    final inside = isInsideGeofence(
-      user: GeoPoint(lat, lng),
-      site: GeoPoint(site.lat, site.lng),
-      radiusMeters: site.radioMetros,
-    );
-    if (!inside) {
-      return PunchResult(
-        ok: false,
-        message:
-            'Fuera del sitio “${site.nombre}”. Acércate a ${site.radioMetros} m para fichar.',
-      );
-    }
     if (actor.id != target.id && !actor.rol.canScanQr) {
       return const PunchResult(
         ok: false,

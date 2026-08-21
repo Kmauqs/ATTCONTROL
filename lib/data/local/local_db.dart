@@ -21,8 +21,9 @@ class LocalDb {
     final dir = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dir, 'attcontrol.db'),
-      version: 1,
+      version: 2,
       onCreate: _onCreate,
+      onUpgrade: _onUpgrade,
     );
     await _ensureSeed();
     return _db!;
@@ -44,7 +45,9 @@ class LocalDb {
         location_id TEXT,
         shift_id TEXT,
         activo INTEGER NOT NULL DEFAULT 1,
-        password_hash TEXT
+        password_hash TEXT,
+        foto_path TEXT,
+        carnet_path TEXT
       )
     ''');
     await db.execute('''
@@ -55,7 +58,9 @@ class LocalDb {
         cuadrilla TEXT,
         lat REAL NOT NULL,
         lng REAL NOT NULL,
-        radio_metros INTEGER NOT NULL
+        radio_metros INTEGER NOT NULL,
+        tipo TEXT NOT NULL DEFAULT 'oficina',
+        activo INTEGER NOT NULL DEFAULT 1
       )
     ''');
     await db.execute('''
@@ -119,6 +124,19 @@ class LocalDb {
     ''');
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        "ALTER TABLE locations ADD COLUMN tipo TEXT NOT NULL DEFAULT 'oficina'",
+      );
+      await db.execute(
+        'ALTER TABLE locations ADD COLUMN activo INTEGER NOT NULL DEFAULT 1',
+      );
+      await db.execute('ALTER TABLE profiles ADD COLUMN foto_path TEXT');
+      await db.execute('ALTER TABLE profiles ADD COLUMN carnet_path TEXT');
+    }
+  }
+
   Future<void> _ensureSeed() async {
     final database = _db!;
     final loc = await database.query('locations');
@@ -131,6 +149,8 @@ class LocalDb {
         'lat': 4.60971,
         'lng': -74.08175,
         'radio_metros': 250,
+        'tipo': 'proyecto',
+        'activo': 1,
       });
       await database.insert('shifts', {
         'id': kDefaultShiftId,

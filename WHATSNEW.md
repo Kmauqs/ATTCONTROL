@@ -4,6 +4,15 @@ Este archivo resume, en lenguaje sencillo, lo que cambió en cada versión. La v
 
 ---
 
+## Versión 1.3.0 (21 de agosto de 2026)
+
+- Se pueden registrar varias zonas autorizadas: oficinas y la localización del proyecto. El personal ficha si está dentro de cualquiera de esos puntos.
+- El supervisor de campo y el administrador pueden marcar su propia asistencia aunque estén haciendo gestiones fuera de esas zonas.
+- En la ficha de personal se puede tomar o cargar una foto y subir el carnet digital en PDF. Eso queda guardado en la nube y lo ven los administradores y supervisores.
+- Cada persona puede abrir su propio carnet digital desde Inicio o desde el ícono de la barra superior.
+
+---
+
 ## Versión 1.2.0 (21 de agosto de 2026)
 
 - Solo el supervisor y el administrador pueden abrir el escáner del carnet o las fichas de personal. Si otra persona intenta entrar a esas pantallas, la aplicación la devuelve al inicio.

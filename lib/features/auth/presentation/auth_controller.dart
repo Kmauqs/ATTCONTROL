@@ -161,6 +161,15 @@ class AuthController extends Notifier<AuthState> {
     await _storage.delete(key: _kRefresh);
     state = state.copyWith(clearProfile: true, hasStoredSession: false);
   }
+
+  Future<void> refreshProfile() async {
+    final current = state.profile;
+    if (current == null) return;
+    final fresh = await _repo.profileById(current.id);
+    if (fresh == null) return;
+    await _persist(fresh);
+    state = state.copyWith(profile: fresh);
+  }
 }
 
 Future<void> hapticOk() => HapticFeedback.mediumImpact();

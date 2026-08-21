@@ -10,20 +10,37 @@ import 'package:attcontrol/core/utils/passwords.dart';
 import 'package:attcontrol/features/attendance/domain/attendance_models.dart';
 
 void main() {
-  test('geocerca acepta el punto del sitio', () {
-    const site = GeoPoint(4.60971, -74.08175);
+  test('geocerca acepta si está en cualquiera de varios sitios', () {
+    const oficina = GeoPoint(4.60971, -74.08175);
+    const proyecto = GeoPoint(4.7110, -74.0721);
     expect(
-      isInsideGeofence(user: site, site: site, radiusMeters: 250),
+      isInsideAnyGeofence(
+        user: proyecto,
+        sites: [
+          (lat: oficina.lat, lng: oficina.lng, radiusMeters: 80),
+          (lat: proyecto.lat, lng: proyecto.lng, radiusMeters: 250),
+        ],
+      ),
       isTrue,
     );
     expect(
-      isInsideGeofence(
-        user: const GeoPoint(4.62, -74.08175),
-        site: site,
-        radiusMeters: 250,
+      isInsideAnyGeofence(
+        user: const GeoPoint(4.80, -74.20),
+        sites: [
+          (lat: oficina.lat, lng: oficina.lng, radiusMeters: 80),
+          (lat: proyecto.lat, lng: proyecto.lng, radiusMeters: 250),
+        ],
       ),
       isFalse,
     );
+  });
+
+  test('supervisor y administrador no requieren geocerca', () {
+    expect(UserRol.supervisor.canSkipGeofence, isTrue);
+    expect(UserRol.superAdmin.canSkipGeofence, isTrue);
+    expect(UserRol.empleado.canSkipGeofence, isFalse);
+    expect(UserRol.asesor.canSkipGeofence, isFalse);
+    expect(UserRol.contratista.canSkipGeofence, isFalse);
   });
 
   test('hora extra nocturna en festivo', () {
@@ -101,7 +118,7 @@ void main() {
         bootstrapping: false,
         isLoggedIn: true,
         rol: UserRol.empleado,
-        location: '/personnel/new',
+        location: '/sites',
       ),
       '/home',
     );

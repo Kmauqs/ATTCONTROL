@@ -45,6 +45,8 @@ enum UserRol {
 
   bool get canManageLabor => this == UserRol.superAdmin;
 
+  bool get canSkipGeofence => isStaff;
+
   bool get canScanQr => isStaff;
 }
 
@@ -63,6 +65,8 @@ class UserProfile {
     this.locationId,
     this.shiftId,
     this.activo = true,
+    this.fotoPath,
+    this.carnetPath,
   });
 
   final String id;
@@ -78,6 +82,8 @@ class UserProfile {
   final String? locationId;
   final String? shiftId;
   final bool activo;
+  final String? fotoPath;
+  final String? carnetPath;
 
   String get fullName => '$nombre $apellido'.trim();
 
@@ -100,6 +106,8 @@ class UserProfile {
     String? nombre,
     String? apellido,
     String? documento,
+    String? fotoPath,
+    String? carnetPath,
   }) {
     return UserProfile(
       id: id,
@@ -115,6 +123,8 @@ class UserProfile {
       locationId: locationId ?? this.locationId,
       shiftId: shiftId ?? this.shiftId,
       activo: activo ?? this.activo,
+      fotoPath: fotoPath ?? this.fotoPath,
+      carnetPath: carnetPath ?? this.carnetPath,
     );
   }
 
@@ -132,6 +142,8 @@ class UserProfile {
         'location_id': locationId,
         'shift_id': shiftId,
         'activo': activo ? 1 : 0,
+        'foto_path': fotoPath,
+        'carnet_path': carnetPath,
       };
 
   factory UserProfile.fromMap(Map<String, dynamic> map) {
@@ -149,6 +161,8 @@ class UserProfile {
       locationId: map['location_id'] as String?,
       shiftId: map['shift_id'] as String?,
       activo: map['activo'] == true || map['activo'] == 1 || map['activo'] == '1',
+      fotoPath: map['foto_path'] as String?,
+      carnetPath: map['carnet_path'] as String?,
     );
   }
 }
@@ -162,6 +176,8 @@ class WorkSite {
     required this.lat,
     required this.lng,
     required this.radioMetros,
+    this.tipo = 'oficina',
+    this.activo = true,
   });
 
   final String id;
@@ -171,6 +187,10 @@ class WorkSite {
   final double lat;
   final double lng;
   final int radioMetros;
+  final String tipo;
+  final bool activo;
+
+  String get tipoLabel => tipo == 'proyecto' ? 'Proyecto' : 'Oficina';
 
   factory WorkSite.fromMap(Map<String, dynamic> map) => WorkSite(
         id: map['id'] as String,
@@ -180,7 +200,36 @@ class WorkSite {
         lat: (map['lat'] as num?)?.toDouble() ?? 4.60971,
         lng: (map['lng'] as num?)?.toDouble() ?? -74.08175,
         radioMetros: (map['radio_metros'] as num?)?.toInt() ?? 250,
+        tipo: (map['tipo'] as String?) ?? 'oficina',
+        activo: map['activo'] == null ||
+            map['activo'] == true ||
+            map['activo'] == 1 ||
+            map['activo'] == '1',
       );
+
+  Map<String, dynamic> toLocalMap() => {
+        'id': id,
+        'nombre': nombre,
+        'proyecto': proyecto,
+        'cuadrilla': cuadrilla,
+        'lat': lat,
+        'lng': lng,
+        'radio_metros': radioMetros,
+        'tipo': tipo,
+        'activo': activo ? 1 : 0,
+      };
+
+  Map<String, dynamic> toRemoteMap() => {
+        'id': id,
+        'nombre': nombre,
+        'proyecto': proyecto,
+        'cuadrilla': cuadrilla,
+        'lat': lat,
+        'lng': lng,
+        'radio_metros': radioMetros,
+        'tipo': tipo,
+        'activo': activo,
+      };
 }
 
 class Shift {

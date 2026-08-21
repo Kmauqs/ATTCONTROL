@@ -1,6 +1,11 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_theme.dart';
@@ -8,6 +13,7 @@ import '../../../core/utils/passwords.dart';
 import '../../../data/app_repository.dart';
 import '../../../data/local/local_db.dart';
 import '../../auth/presentation/auth_controller.dart';
+import 'profile_photo.dart';
 
 class PersonnelListScreen extends ConsumerWidget {
   const PersonnelListScreen({super.key});
@@ -31,15 +37,25 @@ class PersonnelListScreen extends ConsumerWidget {
           final list = snap.data!;
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 88),
-            itemCount: list.length,
+            itemCount: list.length + 1,
             itemBuilder: (context, i) {
-              final p = list[i];
+              if (i == 0) {
+                return Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.location_on_outlined),
+                    title: const Text('Sitios de trabajo'),
+                    subtitle: const Text(
+                      'Oficinas y localización del proyecto',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push('/sites'),
+                  ),
+                );
+              }
+              final p = list[i - 1];
               return Card(
                 child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppColors.mint,
-                    child: Text(p.initials),
-                  ),
+                  leading: ProfilePhoto(profile: p, radius: 22),
                   title: Text(p.fullName),
                   subtitle: Text('${p.documento} · ${p.rol.label}'),
                   trailing: const Icon(Icons.chevron_right),
@@ -78,6 +94,9 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
   UserRol _rol = UserRol.empleado;
   bool _activo = true;
   UserProfile? _existing;
+  Uint8List? _pendingFoto;
+  Uint8List? _pendingCarnet;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -142,14 +161,39 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
       locationId: _existing?.locationId ?? kDefaultLocationId,
       shiftId: _existing?.shiftId ?? kDefaultShiftId,
       activo: _activo,
+      fotoPath: _existing?.fotoPath,
+      carnetPath: _existing?.carnetPath,
     );
     final password = _password.text;
+    setState(() => _saving = true);
     try {
-      await ref.read(appRepositoryProvider).upsertPersonnel(
+      final saved = await ref.read(appRepositoryProvider).upsertPersonnel(
             profile,
             password: password.isEmpty ? null : password,
           );
-      if (mounted) Navigator.pop(context);
+      if (_pendingFoto != null) {
+        await ref.read(appRepositoryProvider).uploadPersonnelFile(
+              profile: saved,
+              kind: 'foto',
+              bytes: _pendingFoto!,
+              contentType: 'image/jpeg',
+            );
+      }
+      if (_pendingCarnet != null) {
+        await ref.read(appRepositoryProvider).uploadPersonnelFile(
+              profile: saved,
+              kind: 'carnet',
+              bytes: _pendingCarnet!,
+              contentType: 'application/pdf',
+            );
+      }
+      if (mounted) {
+        final me = ref.read(authControllerProvider).profile;
+        if (me != null && me.id == saved.id) {
+          await ref.read(authControllerProvider.notifier).refreshProfile();
+        }
+        if (mounted) Navigator.pop(context);
+      }
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -157,6 +201,8 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
           content: Text(e.toString().replaceFirst('Exception: ', '')),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
@@ -192,6 +238,8 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
+            _mediaCard(),
+            const SizedBox(height: 16),
             _field(_documento, 'ID / Documento', required: true),
             _field(_nombre, 'Nombre', required: true),
             _field(_apellido, 'Apellido', required: true),
@@ -244,7 +292,138 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
               onChanged: (v) => setState(() => _activo = v),
             ),
             const SizedBox(height: 16),
-            FilledButton(onPressed: _save, child: const Text('Guardar')),
+            FilledButton(
+              onPressed: _saving ? null : _save,
+              child: Text(_saving ? 'Guardando…' : 'Guardar'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFoto(ImageSource source) async {
+    final file = await ImagePicker().pickImage(
+      source: source,
+      maxWidth: 1200,
+      imageQuality: 85,
+    );
+    if (file == null) return;
+    final bytes = await file.readAsBytes();
+    if (mounted) setState(() => _pendingFoto = bytes);
+  }
+
+  Future<void> _pickCarnet() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: const ['pdf'],
+      withData: true,
+    );
+    final file = result?.files.single;
+    if (file == null) return;
+    final bytes = file.bytes;
+    if (bytes == null) return;
+    if (bytes.length > 8 * 1024 * 1024) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('El PDF no puede superar 8 MB')),
+        );
+      }
+      return;
+    }
+    setState(() => _pendingCarnet = bytes);
+  }
+
+  Future<void> _openCarnet() async {
+    final path = _existing?.carnetPath;
+    if (path == null || path.isEmpty) return;
+    final url = await ref.read(appRepositoryProvider).signedFileUrl(path);
+    if (url == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No se pudo abrir el carnet')),
+        );
+      }
+      return;
+    }
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _chooseFotoSource() async {
+    await showModalBottomSheet<void>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Tomar foto'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickFoto(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Cargar imagen'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickFoto(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _mediaCard() {
+    final hasFoto = _pendingFoto != null || (_existing?.fotoPath ?? '').isNotEmpty;
+    final hasPdf =
+        _pendingCarnet != null || (_existing?.carnetPath ?? '').isNotEmpty;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            if (_pendingFoto != null)
+              CircleAvatar(
+                radius: 44,
+                backgroundImage: MemoryImage(_pendingFoto!),
+              )
+            else if (_existing != null)
+              ProfilePhoto(profile: _existing!, radius: 44)
+            else
+              const CircleAvatar(
+                radius: 44,
+                backgroundColor: AppColors.mint,
+                child: Icon(Icons.person, color: AppColors.forest, size: 40),
+              ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _chooseFotoSource,
+              icon: const Icon(Icons.add_a_photo_outlined),
+              label: Text(hasFoto ? 'Cambiar foto' : 'Agregar foto'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _pickCarnet,
+              icon: const Icon(Icons.picture_as_pdf_outlined),
+              label: Text(
+                _pendingCarnet != null
+                    ? 'PDF listo para guardar'
+                    : hasPdf
+                        ? 'Reemplazar carnet PDF'
+                        : 'Cargar carnet digital (PDF)',
+              ),
+            ),
+            if (hasPdf && _pendingCarnet == null && _existing != null)
+              TextButton.icon(
+                onPressed: _openCarnet,
+                icon: const Icon(Icons.visibility_outlined),
+                label: const Text('Ver carnet actual'),
+              ),
           ],
         ),
       ),

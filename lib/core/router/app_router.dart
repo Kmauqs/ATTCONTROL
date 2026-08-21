@@ -5,7 +5,9 @@ import 'package:go_router/go_router.dart';
 import '../../features/attendance/presentation/qr_scan_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/personnel/presentation/carnet_screen.dart';
 import '../../features/personnel/presentation/personnel_screens.dart';
+import '../../features/settings/presentation/sites_screen.dart';
 import '../shell/app_shell.dart';
 import 'route_guards.dart';
 
@@ -33,6 +35,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (c, s) => const LoginScreen()),
       GoRoute(path: '/home', builder: (c, s) => const AppShell()),
       GoRoute(path: '/qr', builder: (c, s) => const QrScanScreen()),
+      GoRoute(path: '/carnet', builder: (c, s) => const CarnetScreen()),
+      GoRoute(path: '/sites', builder: (c, s) => const SitesScreen()),
       GoRoute(
         path: '/personnel/new',
         builder: (c, s) => const PersonnelFormScreen(),

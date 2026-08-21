@@ -8,6 +8,7 @@ import '../../../core/models/models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/app_repository.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../../personnel/presentation/profile_photo.dart';
 import '../domain/attendance_models.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -100,6 +101,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
         children: [
           _Header(profile: profile),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: () => context.push('/carnet'),
+            icon: const Icon(Icons.badge_outlined),
+            label: const Text('Ver mi carnet digital'),
+          ),
           const SizedBox(height: 20),
           _PunchCard(
             nextIsIn: nextIsIn,
@@ -140,14 +147,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        CircleAvatar(
-          radius: 28,
-          backgroundColor: AppColors.forest,
-          child: Text(
-            profile.initials,
-            style: const TextStyle(color: Colors.white, fontSize: 18),
-          ),
-        ),
+        ProfilePhoto(profile: profile, radius: 28),
         const SizedBox(width: 12),
         Expanded(
           child: Column(

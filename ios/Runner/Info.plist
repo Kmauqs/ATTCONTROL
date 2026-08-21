@@ -19,7 +19,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>ATTCONTROL necesita tu ubicación para validar el fichaje en el sitio de trabajo.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ATTCONTROL usa la cámara para escanear el código QR del carnet.</string>
+	<string>ATTCONTROL usa la cámara para escanear el código QR del carnet y para tomar la foto de la ficha de personal.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ATTCONTROL accede a tus fotos para cargar la imagen de la ficha de personal.</string>
 	<key>NSFaceIDUsageDescription</key>
 	<string>ATTCONTROL usa Face ID para iniciar sesión de forma segura.</string>
 	<key>CFBundlePackageType</key>

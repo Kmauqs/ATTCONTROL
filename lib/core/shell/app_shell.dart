@@ -97,6 +97,11 @@ class _AppShellState extends ConsumerState<AppShell> {
           ),
         ),
         actions: [
+          IconButton(
+            tooltip: 'Mi carnet',
+            onPressed: () => context.push('/carnet'),
+            icon: const Icon(Icons.badge_outlined),
+          ),
           if (profile.rol.canScanQr)
             IconButton(
               tooltip: 'Escanear QR',

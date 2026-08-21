@@ -26,4 +26,20 @@ bool isInsideGeofence({
   return distanceMeters(user, site) <= radiusMeters;
 }
 
+bool isInsideAnyGeofence({
+  required GeoPoint user,
+  required List<({double lat, double lng, int radiusMeters})> sites,
+}) {
+  for (final site in sites) {
+    if (isInsideGeofence(
+      user: user,
+      site: GeoPoint(site.lat, site.lng),
+      radiusMeters: site.radiusMeters,
+    )) {
+      return true;
+    }
+  }
+  return false;
+}
+
 double _rad(double deg) => deg * pi / 180;
