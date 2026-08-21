@@ -1,0 +1,18 @@
+[
+  {"documento": "6394969", "nombre": "Christian", "apellido": "Collazos Sandoval", "cargo": "Consorciado", "correo": "gerencia@gtek.com.co", "rh": "A+", "eps": "SURA", "arl": "POSITIVA", "rol": "super_admin"},
+  {"documento": "18497202", "nombre": "Carlos", "apellido": "Valencia Navarro", "cargo": "Ingeniero Residente", "correo": "krlosval474@gmail.com", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "supervisor"},
+  {"documento": "9872535", "nombre": "Carlos Mauricio", "apellido": "Quintero Suárez", "cargo": "Gerente técnico GTEK", "correo": "gerencia.tecnica@gtek.com.co", "rh": "A-", "eps": "SANITAS", "arl": "POSITIVA", "rol": "super_admin"},
+  {"documento": "1097403172", "nombre": "Harol Mauricio", "apellido": "González Prieto", "cargo": "Topógrafo", "correo": "hmaurogp@gmail.com", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "1096037814", "nombre": "Viviana Yuliet", "apellido": "Muñoz Carmona", "cargo": "Cadenera", "correo": "licitacionesgtek@gmail.com", "rh": "A+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "89005397", "nombre": "David Marcel", "apellido": "Valencia López", "cargo": "Especialista en estructuras", "correo": "davidmarcelvl@yahoo.com", "rh": "O+", "eps": "SANITAS", "arl": "POSITIVA", "rol": "asesor"},
+  {"documento": "7526830", "nombre": "Iván", "apellido": "Echeverri Osorio", "cargo": "Director de Obra", "correo": "gerencia@grupoterra.com.co", "rh": "A+", "eps": "SURA", "arl": "POSITIVA", "rol": "super_admin"},
+  {"documento": "41906373", "nombre": "Luz Patricia", "apellido": "Zapata", "cargo": "Gerente administrativo", "correo": "gerencia.admin@grupoterra.com.co", "rh": "B+", "eps": "SURA", "arl": "SURA", "rol": "supervisor"},
+  {"documento": "1098337308", "nombre": "Helyn Silvana", "apellido": "Galeano Loaiza", "cargo": "Profesional SST", "correo": "silvana0697@gmail.com", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "1094935658", "nombre": "Carlos Andrés", "apellido": "Barrero Trejos", "cargo": "Gerente técnico", "correo": "gerenciatecnica@grupoterra.com.co", "rh": "B+", "eps": "SANITAS", "arl": "POSITIVA", "rol": "supervisor"},
+  {"documento": "18495420", "nombre": "Federma", "apellido": "Buitrago", "cargo": "Maestro de Obra", "correo": "freder.majo@hotmail.es", "rh": "O+", "eps": "SURA", "arl": "SURA", "rol": "empleado"},
+  {"documento": "1094942532", "nombre": "Sergio André", "apellido": "Muñoz", "cargo": "Obrero", "correo": "sergio.munoz.1094942532@attcontrol.local", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "41955794", "nombre": "Paula Viviana", "apellido": "Castro Jiménez", "cargo": "Gerente General GTEK", "correo": "contabilidad@gtek.com.co", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "super_admin"},
+  {"documento": "1005091546", "nombre": "Luisa Fernanda", "apellido": "Velandia Moreno", "cargo": "Auxiliar contable", "correo": "Contabilidad@grupoterra.com.co", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "1005091546-2", "nombre": "Carolina", "apellido": "Prieto Londoño", "cargo": "Profesional en sst", "correo": "carolina.prieto@grupoterra.com.co", "rh": "O+", "eps": "SALUD TOTAL", "arl": "POSITIVA", "rol": "empleado"},
+  {"documento": "9808099", "nombre": "Fernando", "apellido": "Zuleta Ramirez", "cargo": "Almacenista de obra", "correo": "ferzura10@gmail.com", "rh": "O+", "eps": "SURA", "arl": "POSITIVA", "rol": "empleado"}
+]

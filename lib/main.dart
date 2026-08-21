@@ -1,0 +1,28 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+import 'app.dart';
+import 'core/config/env.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: 'assets/.env', isOptional: true);
+  } catch (_) {}
+  if (!Env.hasSupabase) {
+    try {
+      await dotenv.load(fileName: '.env.example');
+    } catch (_) {}
+  }
+
+  if (Env.hasSupabase) {
+    await Supabase.initialize(
+      url: Env.supabaseUrl,
+      publishableKey: Env.supabaseAnonKey,
+    );
+  }
+
+  runApp(const ProviderScope(child: AttcontrolApp()));
+}
