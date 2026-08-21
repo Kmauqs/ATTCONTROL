@@ -31,10 +31,15 @@ def main() -> None:
     load_env()
     url = os.environ.get("SUPABASE_URL", "").rstrip("/")
     key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "")
-    password = os.environ.get("SEED_PASSWORD", "AttControl2026!")
+    password = os.environ.get("SEED_PASSWORD", "").strip()
     if "YOUR_PROJECT" in url or not key or key.startswith("your_"):
         raise SystemExit(
             "Configura SUPABASE_URL y SUPABASE_SERVICE_ROLE_KEY en .env"
+        )
+    if len(password) < 8:
+        raise SystemExit(
+            "Define SEED_PASSWORD (mínimo 8 caracteres) en .env.seed; "
+            "no hay clave por defecto."
         )
 
     people = json.loads((ROOT / "assets" / "seed" / "personal.json").read_text(encoding="utf-8"))

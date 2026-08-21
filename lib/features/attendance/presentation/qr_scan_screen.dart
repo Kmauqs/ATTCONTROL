@@ -50,6 +50,15 @@ class _QrScanScreenState extends ConsumerState<QrScanScreen> {
             lng: pos.longitude,
             source: 'qr',
           );
+      if (!result.ok) {
+        await hapticBad();
+        if (!mounted) return;
+        setState(() {
+          _message = result.message;
+          _handled = false;
+        });
+        return;
+      }
       if (!mounted) return;
       await hapticOk();
       if (!mounted) return;

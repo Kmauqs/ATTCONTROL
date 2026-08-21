@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:uuid/uuid.dart';
 
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/passwords.dart';
 import '../../../data/app_repository.dart';
 import '../../../data/local/local_db.dart';
+import '../../auth/presentation/auth_controller.dart';
 
 class PersonnelListScreen extends ConsumerWidget {
   const PersonnelListScreen({super.key});
@@ -72,6 +73,8 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
   final _rh = TextEditingController();
   final _eps = TextEditingController();
   final _arl = TextEditingController();
+  final _password = TextEditingController();
+  final _password2 = TextEditingController();
   UserRol _rol = UserRol.empleado;
   bool _activo = true;
   UserProfile? _existing;
@@ -111,13 +114,15 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
     _rh.dispose();
     _eps.dispose();
     _arl.dispose();
+    _password.dispose();
+    _password2.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
     final profile = UserProfile(
-      id: _existing?.id ?? const Uuid().v4(),
+      id: _existing?.id ?? '',
       documento: _documento.text.trim(),
       nombre: _nombre.text.trim(),
       apellido: _apellido.text.trim(),
@@ -131,8 +136,29 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
       shiftId: _existing?.shiftId ?? kDefaultShiftId,
       activo: _activo,
     );
-    await ref.read(appRepositoryProvider).upsertPersonnel(profile);
-    if (mounted) Navigator.pop(context);
+    final password = _password.text;
+    try {
+      await ref.read(appRepositoryProvider).upsertPersonnel(
+            profile,
+            password: password.isEmpty ? null : password,
+          );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+        ),
+      );
+    }
+  }
+
+  List<UserRol> _rolesForActor() {
+    final actor = ref.read(authControllerProvider).profile;
+    return UserRol.values.where((r) {
+      if (r != UserRol.superAdmin) return true;
+      return actor?.rol == UserRol.superAdmin || _rol == UserRol.superAdmin;
+    }).toList();
   }
 
   Future<void> _delete() async {
@@ -168,10 +194,39 @@ class _PersonnelFormScreenState extends ConsumerState<PersonnelFormScreen> {
             _field(_eps, 'EPS'),
             _field(_arl, 'ARL'),
             const SizedBox(height: 8),
+            TextFormField(
+              controller: _password,
+              obscureText: true,
+              decoration: InputDecoration(
+                labelText: _existing == null
+                    ? 'Contraseña inicial'
+                    : 'Nueva contraseña (opcional)',
+              ),
+              validator: (v) => validatePassword(
+                v ?? '',
+                required: _existing == null,
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextFormField(
+              controller: _password2,
+              obscureText: true,
+              decoration: const InputDecoration(
+                labelText: 'Confirmar contraseña',
+              ),
+              validator: (v) {
+                if (_password.text.isEmpty && _existing != null) return null;
+                if ((v ?? '') != _password.text) {
+                  return 'Las contraseñas no coinciden';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 8),
             DropdownButtonFormField<UserRol>(
               initialValue: _rol,
               decoration: const InputDecoration(labelText: 'Rol'),
-              items: UserRol.values
+              items: _rolesForActor()
                   .map((r) => DropdownMenuItem(value: r, child: Text(r.label)))
                   .toList(),
               onChanged: (v) => setState(() => _rol = v ?? _rol),

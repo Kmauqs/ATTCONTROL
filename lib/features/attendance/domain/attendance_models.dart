@@ -124,6 +124,15 @@ class Incidencia {
 
 enum PresenceKind { presente, ausente, tarde }
 
+PresenceKind presenceKindFor(AttendanceLog? last) {
+  if (last == null || last.kind == 'salida') return PresenceKind.ausente;
+  if (!last.dentroGeocerca || last.status == 'fuera_sitio') {
+    return PresenceKind.ausente;
+  }
+  if (last.status == 'tarde') return PresenceKind.tarde;
+  return PresenceKind.presente;
+}
+
 class PresenceRow {
   const PresenceRow({
     required this.profile,

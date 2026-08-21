@@ -74,7 +74,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       setState(() {
         _feedback = result.message;
         _ok = result.ok;
-        _last = result.log;
+        if (result.ok && result.log != null) {
+          _last = result.log;
+        }
       });
     } catch (e) {
       await hapticBad();

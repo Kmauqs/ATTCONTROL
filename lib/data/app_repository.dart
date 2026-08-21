@@ -8,6 +8,7 @@ import '../../core/config/env.dart';
 import '../../core/models/models.dart';
 import '../../core/utils/geofence.dart';
 import '../../core/utils/labor_calc.dart';
+import '../../core/utils/passwords.dart';
 import '../../features/attendance/domain/attendance_models.dart';
 import 'local/local_db.dart';
 
@@ -19,13 +20,13 @@ final appRepositoryProvider = Provider<AppRepository>((ref) {
 
 class PunchResult {
   const PunchResult({
-    required this.log,
+    this.log,
     required this.message,
     required this.ok,
     this.offline = false,
   });
 
-  final AttendanceLog log;
+  final AttendanceLog? log;
   final String message;
   final bool ok;
   final bool offline;
@@ -66,16 +67,48 @@ class AppRepository {
     return UserProfile.fromMap(Map<String, dynamic>.from(byMail));
   }
 
-  Future<UserProfile> loginLocal(String identifier, String password) async {
-    if (password != Env.seedPassword) {
-      throw Exception('Contraseña incorrecta');
+  Future<UserProfile?> profileById(String id) async {
+    if (remote) {
+      try {
+        final row =
+            await supabase!.from('profiles').select().eq('id', id).maybeSingle();
+        if (row != null) {
+          return UserProfile.fromMap(Map<String, dynamic>.from(row));
+        }
+      } catch (_) {}
     }
-    final profile = await findProfile(identifier);
-    if (profile == null) {
+    final db = await _local.db;
+    final rows = await db.query('profiles', where: 'id = ?', whereArgs: [id], limit: 1);
+    if (rows.isEmpty) return null;
+    return UserProfile.fromMap(rows.first);
+  }
+
+  Future<UserProfile> loginLocal(String identifier, String password) async {
+    final db = await _local.db;
+    final id = identifier.trim().toLowerCase();
+    final rows = await db.query(
+      'profiles',
+      where: 'lower(documento) = ? OR lower(correo) = ?',
+      whereArgs: [id, id],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
       throw Exception('No encontramos ese documento o correo');
     }
+    final row = rows.first;
+    final profile = UserProfile.fromMap(row);
     if (!profile.activo) throw Exception('Usuario inactivo');
-    return profile;
+    final stored = row['password_hash'] as String?;
+    if (stored != null && stored.isNotEmpty) {
+      if (stored != hashLocalPassword(password, profile.id)) {
+        throw Exception('Contraseña incorrecta');
+      }
+      return profile;
+    }
+    if (!Env.hasSupabase && password == Env.seedPassword) {
+      return profile;
+    }
+    throw Exception('Pide a tu supervisor que asigne una contraseña');
   }
 
   Future<UserProfile> loginRemote(String identifier, String password) async {
@@ -137,27 +170,86 @@ class AppRepository {
     return rows.map(UserProfile.fromMap).toList();
   }
 
-  Future<UserProfile> upsertPersonnel(UserProfile profile) async {
+  Future<UserProfile> upsertPersonnel(
+    UserProfile profile, {
+    String? password,
+  }) async {
     final db = await _local.db;
-    final map = profile.toMap();
-    await db.insert('profiles', map, conflictAlgorithm: ConflictAlgorithm.replace);
+    var saved = profile;
+    final isNew = profile.id.isEmpty;
     if (remote) {
-      try {
-        await supabase!.functions.invoke(
-          'create-employee',
-          body: {
-            ...map,
-            'activo': profile.activo,
-          },
-        );
-      } catch (_) {
-        await supabase!.from('profiles').upsert({
-          ...map,
+      final res = await supabase!.functions.invoke(
+        'create-employee',
+        body: {
+          if (!isNew) 'id': profile.id,
+          'documento': profile.documento,
+          'nombre': profile.nombre,
+          'apellido': profile.apellido,
+          'cargo': profile.cargo,
+          'correo': profile.correo,
+          'rh': profile.rh,
+          'eps': profile.eps,
+          'arl': profile.arl,
+          'rol': profile.rol.dbValue,
           'activo': profile.activo,
-        });
+          'location_id': profile.locationId,
+          'shift_id': profile.shiftId,
+          if (password != null && password.isNotEmpty) 'password': password,
+        },
+      );
+      if (res.status >= 400) {
+        final err = res.data is Map ? res.data['error'] : null;
+        throw Exception(err ?? 'No se pudo guardar el personal');
+      }
+      final id = (res.data as Map)['id'] as String? ?? profile.id;
+      saved = UserProfile(
+        id: id,
+        documento: profile.documento,
+        nombre: profile.nombre,
+        apellido: profile.apellido,
+        cargo: profile.cargo,
+        correo: profile.correo,
+        rh: profile.rh,
+        eps: profile.eps,
+        arl: profile.arl,
+        rol: profile.rol,
+        locationId: profile.locationId,
+        shiftId: profile.shiftId,
+        activo: profile.activo,
+      );
+    } else if (isNew) {
+      saved = UserProfile(
+        id: _uuid.v4(),
+        documento: profile.documento,
+        nombre: profile.nombre,
+        apellido: profile.apellido,
+        cargo: profile.cargo,
+        correo: profile.correo,
+        rh: profile.rh,
+        eps: profile.eps,
+        arl: profile.arl,
+        rol: profile.rol,
+        locationId: profile.locationId,
+        shiftId: profile.shiftId,
+        activo: profile.activo,
+      );
+    }
+    final map = saved.toMap();
+    if (password != null && password.isNotEmpty) {
+      map['password_hash'] = hashLocalPassword(password, saved.id);
+    } else {
+      final prev = await db.query(
+        'profiles',
+        columns: ['password_hash'],
+        where: 'id = ?',
+        whereArgs: [saved.id],
+      );
+      if (prev.isNotEmpty && prev.first['password_hash'] != null) {
+        map['password_hash'] = prev.first['password_hash'];
       }
     }
-    return profile;
+    await db.insert('profiles', map, conflictAlgorithm: ConflictAlgorithm.replace);
+    return saved;
   }
 
   Future<void> deletePersonnel(String id) async {
@@ -176,12 +268,14 @@ class AppRepository {
     final rows = await db.query('locations', where: 'id = ?', whereArgs: [id]);
     if (rows.isNotEmpty) return WorkSite.fromMap(rows.first);
     if (remote) {
-      final row = await supabase!
-          .from('locations')
-          .select()
-          .eq('id', id)
-          .maybeSingle();
-      if (row != null) return WorkSite.fromMap(Map<String, dynamic>.from(row));
+      try {
+        final row = await supabase!
+            .from('locations')
+            .select()
+            .eq('id', id)
+            .maybeSingle();
+        if (row != null) return WorkSite.fromMap(Map<String, dynamic>.from(row));
+      } catch (_) {}
     }
     return null;
   }
@@ -202,6 +296,18 @@ class AppRepository {
   }
 
   Future<LaborSettings> laborSettings() async {
+    if (remote && await _online()) {
+      try {
+        final rows = await supabase!.from('labor_settings').select().limit(1);
+        if (rows.isNotEmpty) {
+          final settings =
+              LaborSettings.fromMap(Map<String, dynamic>.from(rows.first));
+          final db = await _local.db;
+          await db.update('labor_settings', settings.toMap());
+          return settings;
+        }
+      } catch (_) {}
+    }
     final db = await _local.db;
     final rows = await db.query('labor_settings', limit: 1);
     if (rows.isNotEmpty) return LaborSettings.fromMap(rows.first);
@@ -217,30 +323,91 @@ class AppRepository {
   }
 
   Future<Set<String>> holidays() async {
+    if (remote && await _online()) {
+      try {
+        final rows = await supabase!.from('holidays').select('fecha');
+        if (rows.isNotEmpty) {
+          return {
+            for (final e in rows) (e as Map)['fecha'].toString().substring(0, 10),
+          };
+        }
+      } catch (_) {}
+    }
     final db = await _local.db;
     final rows = await db.query('holidays');
     return rows.map((e) => e['fecha'] as String).toSet();
   }
 
   Future<AttendanceLog?> lastToday(String empleadoId) async {
-    final logs = await logsFor(empleadoId);
     final now = DateTime.now();
-    final today = logs.where((l) =>
-        l.markedAt.year == now.year &&
-        l.markedAt.month == now.month &&
-        l.markedAt.day == now.day);
-    if (today.isEmpty) return null;
-    return today.first;
+    final start = DateTime(now.year, now.month, now.day);
+    final logs = await logsFor(
+      empleadoId,
+      from: start,
+      to: start.add(const Duration(days: 1)),
+    );
+    return logs.isEmpty ? null : logs.first;
   }
 
   Future<List<AttendanceLog>> logsFor(String empleadoId, {DateTime? from, DateTime? to}) async {
+    if (remote && await _online()) {
+      try {
+        var q = supabase!
+            .from('attendance_logs')
+            .select()
+            .eq('empleado_id', empleadoId);
+        if (from != null) {
+          q = q.gte('marked_at', from.toUtc().toIso8601String());
+        }
+        if (to != null) {
+          q = q.lte('marked_at', to.toUtc().toIso8601String());
+        }
+        final rows = await q.order('marked_at', ascending: false);
+        final remoteLogs = (rows as List)
+            .map((e) => AttendanceLog.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+        final pending = await _pendingLogs(empleadoId);
+        return _mergeLogs(remoteLogs, pending);
+      } catch (_) {}
+    }
+    return _localLogs(empleadoId, from: from, to: to);
+  }
+
+  Future<List<AttendanceLog>> allLogs({DateTime? from, DateTime? to}) async {
+    if (remote && await _online()) {
+      try {
+        var q = supabase!.from('attendance_logs').select();
+        if (from != null) {
+          q = q.gte('marked_at', from.toUtc().toIso8601String());
+        }
+        if (to != null) {
+          q = q.lte('marked_at', to.toUtc().toIso8601String());
+        }
+        final rows = await q.order('marked_at', ascending: false);
+        final remoteLogs = (rows as List)
+            .map((e) => AttendanceLog.fromMap(Map<String, dynamic>.from(e)))
+            .toList();
+        final pending = await _pendingLogs(null);
+        return _mergeLogs(remoteLogs, pending);
+      } catch (_) {}
+    }
+    return _localLogs(null, from: from, to: to);
+  }
+
+  Future<List<AttendanceLog>> _localLogs(
+    String? empleadoId, {
+    DateTime? from,
+    DateTime? to,
+  }) async {
     final db = await _local.db;
-    final rows = await db.query(
-      'attendance_logs',
-      where: 'empleado_id = ?',
-      whereArgs: [empleadoId],
-      orderBy: 'marked_at DESC',
-    );
+    final rows = empleadoId == null
+        ? await db.query('attendance_logs', orderBy: 'marked_at DESC')
+        : await db.query(
+            'attendance_logs',
+            where: 'empleado_id = ?',
+            whereArgs: [empleadoId],
+            orderBy: 'marked_at DESC',
+          );
     var list = rows.map(AttendanceLog.fromMap).toList();
     if (from != null) {
       list = list.where((l) => !l.markedAt.isBefore(from)).toList();
@@ -251,16 +418,28 @@ class AppRepository {
     return list;
   }
 
-  Future<List<AttendanceLog>> allLogs({DateTime? from, DateTime? to}) async {
+  Future<List<AttendanceLog>> _pendingLogs(String? empleadoId) async {
     final db = await _local.db;
-    final rows = await db.query('attendance_logs', orderBy: 'marked_at DESC');
-    var list = rows.map(AttendanceLog.fromMap).toList();
-    if (from != null) {
-      list = list.where((l) => !l.markedAt.isBefore(from)).toList();
+    final rows = empleadoId == null
+        ? await db.query('attendance_logs', where: 'synced = 0')
+        : await db.query(
+            'attendance_logs',
+            where: 'empleado_id = ? AND synced = 0',
+            whereArgs: [empleadoId],
+          );
+    return rows.map(AttendanceLog.fromMap).toList();
+  }
+
+  List<AttendanceLog> _mergeLogs(
+    List<AttendanceLog> remote,
+    List<AttendanceLog> pending,
+  ) {
+    final byClient = {for (final l in remote) l.clientId: l};
+    for (final l in pending) {
+      byClient.putIfAbsent(l.clientId, () => l);
     }
-    if (to != null) {
-      list = list.where((l) => !l.markedAt.isAfter(to)).toList();
-    }
+    final list = byClient.values.toList()
+      ..sort((a, b) => b.markedAt.compareTo(a.markedAt));
     return list;
   }
 
@@ -272,14 +451,31 @@ class AppRepository {
     String source = 'app',
   }) async {
     final site = await siteFor(target);
+    if (site == null) {
+      return const PunchResult(
+        ok: false,
+        message: 'No hay sitio asignado para validar el GPS',
+      );
+    }
     final shift = await shiftFor(target);
-    final inside = site == null
-        ? true
-        : isInsideGeofence(
-            user: GeoPoint(lat, lng),
-            site: GeoPoint(site.lat, site.lng),
-            radiusMeters: site.radioMetros,
-          );
+    final inside = isInsideGeofence(
+      user: GeoPoint(lat, lng),
+      site: GeoPoint(site.lat, site.lng),
+      radiusMeters: site.radioMetros,
+    );
+    if (!inside) {
+      return PunchResult(
+        ok: false,
+        message:
+            'Fuera del sitio “${site.nombre}”. Acércate a ${site.radioMetros} m para fichar.',
+      );
+    }
+    if (actor.id != target.id && !actor.rol.canScanQr) {
+      return const PunchResult(
+        ok: false,
+        message: 'No autorizado a fichar a otra persona',
+      );
+    }
     final last = await lastToday(target.id);
     final kind = (last == null || last.kind == 'salida') ? 'entrada' : 'salida';
     var status = 'a_tiempo';
@@ -300,7 +496,6 @@ class AppRepository {
       );
       if (now.isBefore(limit)) status = 'salida_temprana';
     }
-    if (!inside) status = 'fuera_sitio';
 
     final online = await _online();
     final log = AttendanceLog(
@@ -341,14 +536,6 @@ class AppRepository {
 
     final who = actor.id == target.id ? '' : ' (${target.fullName})';
     final verb = kind == 'entrada' ? 'Entrada' : 'Salida';
-    if (!inside) {
-      return PunchResult(
-        log: log,
-        ok: false,
-        message: '$verb registrada fuera del sitio asignado$who',
-        offline: !online,
-      );
-    }
     return PunchResult(
       log: log,
       ok: true,
@@ -379,15 +566,23 @@ class AppRepository {
   }
 
   Future<List<Incidencia>> incidencias({String? empleadoId}) async {
-    final db = await _local.db;
-    final rows = empleadoId == null
-        ? await db.query('incidencias', orderBy: 'fecha_inicio DESC')
-        : await db.query(
-            'incidencias',
-            where: 'empleado_id = ?',
-            whereArgs: [empleadoId],
-            orderBy: 'fecha_inicio DESC',
-          );
+    List<Map<String, dynamic>> rows;
+    if (remote && await _online()) {
+      try {
+        var q = supabase!.from('incidencias').select();
+        if (empleadoId != null) {
+          q = q.eq('empleado_id', empleadoId);
+        }
+        final data = await q.order('fecha_inicio', ascending: false);
+        rows = (data as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      } catch (_) {
+        rows = await _localIncidenciaRows(empleadoId);
+      }
+    } else {
+      rows = await _localIncidenciaRows(empleadoId);
+    }
     final people = {for (final p in await listPersonnel()) p.id: p};
     return rows.map((m) {
       final i = Incidencia.fromMap(m);
@@ -402,6 +597,19 @@ class AppRepository {
         empleadoNombre: people[i.empleadoId]?.fullName,
       );
     }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> _localIncidenciaRows(String? empleadoId) async {
+    final db = await _local.db;
+    final rows = empleadoId == null
+        ? await db.query('incidencias', orderBy: 'fecha_inicio DESC')
+        : await db.query(
+            'incidencias',
+            where: 'empleado_id = ?',
+            whereArgs: [empleadoId],
+            orderBy: 'fecha_inicio DESC',
+          );
+    return rows;
   }
 
   Future<Incidencia> createIncidencia(Incidencia item) async {
@@ -448,20 +656,24 @@ class AppRepository {
 
   Future<List<PresenceRow>> presenceToday() async {
     final people = (await listPersonnel()).where((p) => p.activo).toList();
-    final rows = <PresenceRow>[];
-    for (final p in people) {
-      final last = await lastToday(p.id);
-      PresenceKind kind;
-      if (last == null || last.kind == 'salida') {
-        kind = PresenceKind.ausente;
-      } else if (last.status == 'tarde') {
-        kind = PresenceKind.tarde;
-      } else {
-        kind = PresenceKind.presente;
-      }
-      rows.add(PresenceRow(profile: p, kind: kind, lastMark: last));
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day);
+    final logs = await allLogs(
+      from: start,
+      to: start.add(const Duration(days: 1)),
+    );
+    final lastByEmp = <String, AttendanceLog>{};
+    for (final log in logs) {
+      lastByEmp.putIfAbsent(log.empleadoId, () => log);
     }
-    return rows;
+    return [
+      for (final p in people)
+        PresenceRow(
+          profile: p,
+          kind: presenceKindFor(lastByEmp[p.id]),
+          lastMark: lastByEmp[p.id],
+        ),
+    ];
   }
 
   Future<bool> _online() async {

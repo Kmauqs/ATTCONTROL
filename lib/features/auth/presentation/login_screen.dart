@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/config/env.dart';
 import '../../../core/theme/app_theme.dart';
 import 'auth_controller.dart';
 
@@ -117,10 +118,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ],
                     const SizedBox(height: 12),
-                    const Text(
-                      'Clave inicial de demostración: AttControl2026!\nUsa tu número de documento o correo.',
+                    Text(
+                      Env.hasSupabase
+                          ? 'Usa la contraseña asignada por tu supervisor.'
+                          : 'Modo local de demostración. Clave inicial: ${Env.seedPassword}',
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 12, color: Colors.black54),
+                      style: const TextStyle(fontSize: 12, color: Colors.black54),
                     ),
                   ],
                 ),

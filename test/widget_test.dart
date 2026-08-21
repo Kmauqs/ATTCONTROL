@@ -5,6 +5,8 @@ import 'package:attcontrol/core/models/models.dart';
 import 'package:attcontrol/core/theme/app_theme.dart';
 import 'package:attcontrol/core/utils/geofence.dart';
 import 'package:attcontrol/core/utils/labor_calc.dart';
+import 'package:attcontrol/core/utils/passwords.dart';
+import 'package:attcontrol/features/attendance/domain/attendance_models.dart';
 
 void main() {
   test('geocerca acepta el punto del sitio', () {
@@ -35,5 +37,51 @@ void main() {
 
   test('color corporativo', () {
     expect(AppColors.forest, const Color(0xFF1B5E3B));
+  });
+
+  test('fuera de geocerca no cuenta como presente', () {
+    final fuera = AttendanceLog(
+      id: '1',
+      clientId: '1',
+      empleadoId: 'e1',
+      kind: 'entrada',
+      markedAt: DateTime(2026, 8, 21, 8),
+      dentroGeocerca: false,
+      status: 'fuera_sitio',
+    );
+    expect(presenceKindFor(fuera), PresenceKind.ausente);
+    expect(presenceKindFor(null), PresenceKind.ausente);
+    expect(
+      presenceKindFor(
+        AttendanceLog(
+          id: '2',
+          clientId: '2',
+          empleadoId: 'e1',
+          kind: 'entrada',
+          markedAt: DateTime(2026, 8, 21, 8),
+          status: 'tarde',
+        ),
+      ),
+      PresenceKind.tarde,
+    );
+    expect(
+      presenceKindFor(
+        AttendanceLog(
+          id: '3',
+          clientId: '3',
+          empleadoId: 'e1',
+          kind: 'entrada',
+          markedAt: DateTime(2026, 8, 21, 8),
+        ),
+      ),
+      PresenceKind.presente,
+    );
+  });
+
+  test('contraseña nueva es obligatoria y de 8 caracteres', () {
+    expect(validatePassword('', required: true), isNotNull);
+    expect(validatePassword('corta', required: true), isNotNull);
+    expect(validatePassword('segura123', required: true), isNull);
+    expect(validatePassword('', required: false), isNull);
   });
 }
