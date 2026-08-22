@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../features/attendance/presentation/dashboard_screen.dart';
 import '../../features/attendance/presentation/hours_screen.dart';
+import '../../features/attendance/presentation/punch_map_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/incidencias/presentation/incidencias_screen.dart';
 import '../../features/personnel/presentation/personnel_screens.dart';
@@ -57,6 +58,12 @@ class _AppShellState extends ConsumerState<AppShell> {
         'Reportes',
         Icons.summarize_outlined,
         (_) => const ReportsScreen(),
+        (r) => r.isStaff,
+      ),
+      _Dest(
+        'Mapa',
+        Icons.map_outlined,
+        (_) => const PunchMapScreen(),
         (r) => r.isStaff,
       ),
       _Dest(

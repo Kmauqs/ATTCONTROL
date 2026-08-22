@@ -167,6 +167,20 @@ class UserProfile {
   }
 }
 
+class CatalogItem {
+  const CatalogItem({required this.id, required this.nombre});
+
+  final String id;
+  final String nombre;
+
+  factory CatalogItem.fromMap(Map<String, dynamic> map) => CatalogItem(
+        id: map['id'] as String,
+        nombre: map['nombre'] as String? ?? '',
+      );
+
+  Map<String, dynamic> toMap() => {'id': id, 'nombre': nombre};
+}
+
 class WorkSite {
   const WorkSite({
     required this.id,
@@ -178,6 +192,9 @@ class WorkSite {
     required this.radioMetros,
     this.tipo = 'oficina',
     this.activo = true,
+    this.direccion,
+    this.cliente,
+    this.contrato,
   });
 
   final String id;
@@ -189,6 +206,9 @@ class WorkSite {
   final int radioMetros;
   final String tipo;
   final bool activo;
+  final String? direccion;
+  final String? cliente;
+  final String? contrato;
 
   String get tipoLabel => tipo == 'proyecto' ? 'Proyecto' : 'Oficina';
 
@@ -205,6 +225,9 @@ class WorkSite {
             map['activo'] == true ||
             map['activo'] == 1 ||
             map['activo'] == '1',
+        direccion: map['direccion'] as String?,
+        cliente: map['cliente'] as String?,
+        contrato: map['contrato'] as String?,
       );
 
   Map<String, dynamic> toLocalMap() => {
@@ -217,6 +240,9 @@ class WorkSite {
         'radio_metros': radioMetros,
         'tipo': tipo,
         'activo': activo ? 1 : 0,
+        'direccion': direccion,
+        'cliente': cliente,
+        'contrato': contrato,
       };
 
   Map<String, dynamic> toRemoteMap() => {
@@ -229,6 +255,9 @@ class WorkSite {
         'radio_metros': radioMetros,
         'tipo': tipo,
         'activo': activo,
+        'direccion': direccion,
+        'cliente': cliente,
+        'contrato': contrato,
       };
 }
 

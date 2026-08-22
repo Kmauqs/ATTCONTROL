@@ -12,7 +12,8 @@ String? resolveAppRedirect({
   if (!isLoggedIn) return loggingIn ? null : '/login';
   if (loggingIn) return '/home';
   if (location == '/qr' && rol?.canScanQr != true) return '/home';
-  if (location == '/sites' && rol?.isStaff != true) return '/home';
+  if (location.startsWith('/sites') && rol?.isStaff != true) return '/home';
+  if (location == '/map' && rol?.isStaff != true) return '/home';
   if (location.startsWith('/personnel') && rol?.isStaff != true) return '/home';
   return null;
 }

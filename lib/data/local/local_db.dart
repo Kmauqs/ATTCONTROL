@@ -21,7 +21,7 @@ class LocalDb {
     final dir = await getDatabasesPath();
     _db = await openDatabase(
       p.join(dir, 'attcontrol.db'),
-      version: 2,
+      version: 3,
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -60,7 +60,22 @@ class LocalDb {
         lng REAL NOT NULL,
         radio_metros INTEGER NOT NULL,
         tipo TEXT NOT NULL DEFAULT 'oficina',
-        activo INTEGER NOT NULL DEFAULT 1
+        activo INTEGER NOT NULL DEFAULT 1,
+        direccion TEXT,
+        cliente TEXT,
+        contrato TEXT
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE departamentos (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE cuadrillas (
+        id TEXT PRIMARY KEY,
+        nombre TEXT NOT NULL UNIQUE
       )
     ''');
     await db.execute('''
@@ -134,6 +149,23 @@ class LocalDb {
       );
       await db.execute('ALTER TABLE profiles ADD COLUMN foto_path TEXT');
       await db.execute('ALTER TABLE profiles ADD COLUMN carnet_path TEXT');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE locations ADD COLUMN direccion TEXT');
+      await db.execute('ALTER TABLE locations ADD COLUMN cliente TEXT');
+      await db.execute('ALTER TABLE locations ADD COLUMN contrato TEXT');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS departamentos (
+          id TEXT PRIMARY KEY,
+          nombre TEXT NOT NULL UNIQUE
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS cuadrillas (
+          id TEXT PRIMARY KEY,
+          nombre TEXT NOT NULL UNIQUE
+        )
+      ''');
     }
   }
 

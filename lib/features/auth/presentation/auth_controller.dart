@@ -7,6 +7,7 @@ import 'package:local_auth/local_auth.dart';
 
 import '../../../core/config/env.dart';
 import '../../../core/models/models.dart';
+import '../../../core/utils/session.dart';
 import '../../../data/app_repository.dart';
 
 class AuthState {
@@ -55,6 +56,7 @@ final authControllerProvider =
 class AuthController extends Notifier<AuthState> {
   static const _kSession = 'session';
   static const _kRefresh = 'refresh_token';
+  static const _kLoggedAt = 'logged_at';
 
   final _storage = const FlutterSecureStorage();
   final _auth = LocalAuthentication();
@@ -71,16 +73,85 @@ class AuthController extends Notifier<AuthState> {
     final bio = await _auth.isDeviceSupported();
     final stored = await _storage.read(key: _kSession);
     final refresh = await _storage.read(key: _kRefresh);
+    final loggedAtRaw = await _storage.read(key: _kLoggedAt);
+    var loggedAt = DateTime.tryParse(loggedAtRaw ?? '');
+    if (stored != null && loggedAt == null) {
+      loggedAt = DateTime.now().toUtc();
+      await _storage.write(key: _kLoggedAt, value: loggedAt.toIso8601String());
+    }
+    final withinTtl =
+        loggedAt != null && sessionStillValid(loggedAt, DateTime.now());
+
+    if (stored != null && loggedAt != null && !withinTtl) {
+      await _clearStoredSession();
+      state = state.copyWith(
+        bootstrapping: false,
+        biometricsAvailable: bio,
+        hasStoredSession: false,
+      );
+      return;
+    }
+
+    if (withinTtl && stored != null) {
+      final restored = await _restoreSession(
+        stored: stored,
+        refresh: refresh,
+      );
+      if (restored) return;
+    }
+
     final supabaseSession = _repo.supabase?.auth.currentSession;
     state = state.copyWith(
       bootstrapping: false,
       biometricsAvailable: bio,
       hasStoredSession: stored != null &&
+          withinTtl &&
           (!Env.hasSupabase || refresh != null || supabaseSession != null),
     );
   }
 
-  Future<void> _persist(UserProfile profile) async {
+  Future<bool> _restoreSession({
+    required String stored,
+    String? refresh,
+  }) async {
+    try {
+      if (Env.hasSupabase) {
+        final client = _repo.supabase;
+        if (client == null) return false;
+        var session = client.auth.currentSession;
+        if (session == null) {
+          if (refresh == null || refresh.isEmpty) return false;
+          final result = await client.auth.setSession(refresh);
+          session = result.session;
+        }
+        if (session == null) return false;
+        final token = session.refreshToken;
+        if (token != null && token.isNotEmpty) {
+          await _storage.write(key: _kRefresh, value: token);
+        }
+        final profile = await _repo.profileById(session.user.id);
+        if (profile == null) return false;
+        await _persist(profile, renewTtl: false);
+        state = state.copyWith(
+          profile: profile,
+          bootstrapping: false,
+          hasStoredSession: true,
+        );
+        return true;
+      }
+      final map = jsonDecode(stored) as Map<String, dynamic>;
+      state = state.copyWith(
+        profile: UserProfile.fromMap(map),
+        bootstrapping: false,
+        hasStoredSession: true,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> _persist(UserProfile profile, {bool renewTtl = true}) async {
     await _storage.write(
       key: _kSession,
       value: jsonEncode(profile.toMap()),
@@ -89,6 +160,18 @@ class AuthController extends Notifier<AuthState> {
     if (refresh != null && refresh.isNotEmpty) {
       await _storage.write(key: _kRefresh, value: refresh);
     }
+    if (renewTtl) {
+      await _storage.write(
+        key: _kLoggedAt,
+        value: DateTime.now().toUtc().toIso8601String(),
+      );
+    }
+  }
+
+  Future<void> _clearStoredSession() async {
+    await _storage.delete(key: _kSession);
+    await _storage.delete(key: _kRefresh);
+    await _storage.delete(key: _kLoggedAt);
   }
 
   Future<void> login(String identifier, String password) async {
@@ -138,7 +221,7 @@ class AuthController extends Notifier<AuthState> {
         }
         final profile = await _repo.profileById(session.user.id);
         if (profile == null) return false;
-        await _persist(profile);
+        await _persist(profile, renewTtl: false);
         state = state.copyWith(profile: profile, hasStoredSession: true);
         return true;
       }
@@ -157,8 +240,7 @@ class AuthController extends Notifier<AuthState> {
         await _repo.supabase?.auth.signOut();
       } catch (_) {}
     }
-    await _storage.delete(key: _kSession);
-    await _storage.delete(key: _kRefresh);
+    await _clearStoredSession();
     state = state.copyWith(clearProfile: true, hasStoredSession: false);
   }
 
@@ -167,7 +249,7 @@ class AuthController extends Notifier<AuthState> {
     if (current == null) return;
     final fresh = await _repo.profileById(current.id);
     if (fresh == null) return;
-    await _persist(fresh);
+    await _persist(fresh, renewTtl: false);
     state = state.copyWith(profile: fresh);
   }
 }

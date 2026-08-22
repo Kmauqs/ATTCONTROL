@@ -4,6 +4,15 @@ Este archivo resume, en lenguaje sencillo, lo que cambió en cada versión. La v
 
 ---
 
+## Versión 1.4.0 (21 de agosto de 2026)
+
+- Después de entrar, la sesión se mantiene abierta 7 días. No hay que volver a escribir la contraseña cada vez que se abre la aplicación (salvo que haya salido o hayan pasado esos 7 días).
+- En **Ajustes** el administrador puede crear cuadrillas y departamentos, y abrir las localizaciones.
+- Las localizaciones (oficinas y proyectos) ahora incluyen nombre, dirección, GPS, cliente y número de contrato. El GPS sigue sirviendo para validar el fichaje.
+- Supervisores y administradores ven un **mapa** con los puntos donde el personal marcó la entrada.
+
+---
+
 ## Versión 1.3.0 (21 de agosto de 2026)
 
 - Se pueden registrar varias zonas autorizadas: oficinas y la localización del proyecto. El personal ficha si está dentro de cualquiera de esos puntos.

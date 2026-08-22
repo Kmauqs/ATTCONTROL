@@ -7,7 +7,7 @@ ATTCONTROL no se publica en un sitio web. Tiene dos partes:
 1. **La nube (Supabase):** cuentas, fichajes, personal, sitios, fotos y carnets.
 2. **La aplicación (Flutter):** se instala en Android y, si hay Mac, en iOS.
 
-La versión actual de la app es **1.3.0** (`1.3.0+4` en `pubspec.yaml`).
+La versión actual de la app es **1.4.0** (`1.4.0+5` en `pubspec.yaml`).
 
 ---
 
@@ -43,6 +43,8 @@ Los archivos están en `supabase/migrations/`, en este orden:
 | `20260821000002_guard_privileges_geofence.sql` | Impide que alguien se cambie el rol y valida el GPS |
 | `20260821000003_guard_skip_service_role.sql` | Permite que los scripts de servidor creen personal |
 | `20260821000004_sites_media_geofence.sql` | Varios sitios, excepción de GPS para staff, foto y carnet |
+| `20260821000005_fix_private_schema_rls.sql` | Permite leer el perfil al iniciar sesión (sin error de esquema `private`) |
+| `20260821000006_cuadrillas_site_fields.sql` | Cuadrillas, dirección, cliente y contrato en localizaciones |
 
 En un proyecto **nuevo**, aplica todas. En el proyecto que ya está en uso, aplica solo las que falten.
 

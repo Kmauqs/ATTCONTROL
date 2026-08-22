@@ -7,6 +7,7 @@ import 'package:attcontrol/core/theme/app_theme.dart';
 import 'package:attcontrol/core/utils/geofence.dart';
 import 'package:attcontrol/core/utils/labor_calc.dart';
 import 'package:attcontrol/core/utils/passwords.dart';
+import 'package:attcontrol/core/utils/session.dart';
 import 'package:attcontrol/features/attendance/domain/attendance_models.dart';
 
 void main() {
@@ -126,11 +127,26 @@ void main() {
       resolveAppRedirect(
         bootstrapping: false,
         isLoggedIn: true,
+        rol: UserRol.empleado,
+        location: '/map',
+      ),
+      '/home',
+    );
+    expect(
+      resolveAppRedirect(
+        bootstrapping: false,
+        isLoggedIn: true,
         rol: UserRol.supervisor,
         location: '/qr',
       ),
       isNull,
     );
+  });
+
+  test('sesión válida durante 7 días', () {
+    final start = DateTime.utc(2026, 8, 21, 12);
+    expect(sessionStillValid(start, start.add(const Duration(days: 6))), isTrue);
+    expect(sessionStillValid(start, start.add(const Duration(days: 7))), isFalse);
   });
 
   test('sin sesión se envía al login', () {

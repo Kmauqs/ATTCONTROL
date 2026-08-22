@@ -37,6 +37,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/qr', builder: (c, s) => const QrScanScreen()),
       GoRoute(path: '/carnet', builder: (c, s) => const CarnetScreen()),
       GoRoute(path: '/sites', builder: (c, s) => const SitesScreen()),
+      GoRoute(path: '/sites/new', builder: (c, s) => const SiteFormScreen()),
+      GoRoute(
+        path: '/sites/:id',
+        builder: (c, s) => SiteFormScreen(id: s.pathParameters['id']),
+      ),
       GoRoute(
         path: '/personnel/new',
         builder: (c, s) => const PersonnelFormScreen(),

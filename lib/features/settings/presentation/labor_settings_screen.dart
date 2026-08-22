@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/models/models.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/app_repository.dart';
+import 'catalog_section.dart';
 
 class LaborSettingsScreen extends ConsumerStatefulWidget {
   const LaborSettingsScreen({super.key});
@@ -145,6 +147,30 @@ class _LaborSettingsScreenState extends ConsumerState<LaborSettingsScreen> {
         _pct('Extra nocturna festivo', _s.extraNocturnaFestivo),
         const SizedBox(height: 16),
         FilledButton(onPressed: _save, child: const Text('Guardar ajustes')),
+        const Divider(height: 40),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.location_on_outlined),
+            title: const Text('Localizaciones'),
+            subtitle: const Text('Oficinas y proyectos con GPS'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push('/sites'),
+          ),
+        ),
+        const SizedBox(height: 20),
+        CatalogSection(
+          title: 'Cuadrillas',
+          hint: 'Equipos de trabajo que se asignan a una localización.',
+          table: 'cuadrillas',
+          repo: ref.read(appRepositoryProvider),
+        ),
+        const SizedBox(height: 20),
+        CatalogSection(
+          title: 'Departamentos',
+          hint: 'Áreas de la empresa para organizar el personal.',
+          table: 'departamentos',
+          repo: ref.read(appRepositoryProvider),
+        ),
         const SizedBox(height: 12),
         const Text(
           'Festivos de Colombia 2026 están precargados para el cálculo de recargos.',

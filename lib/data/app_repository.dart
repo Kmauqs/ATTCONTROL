@@ -350,6 +350,50 @@ class AppRepository {
     }
   }
 
+  Future<List<CatalogItem>> listCatalog(String table) async {
+    if (remote && await _online()) {
+      try {
+        final rows = await supabase!.from(table).select().order('nombre');
+        final list = (rows as List)
+            .map((e) => CatalogItem.fromMap(Map<String, dynamic>.from(e as Map)))
+            .toList();
+        final db = await _local.db;
+        for (final item in list) {
+          await db.insert(
+            table,
+            item.toMap(),
+            conflictAlgorithm: ConflictAlgorithm.replace,
+          );
+        }
+        return list;
+      } catch (_) {}
+    }
+    final db = await _local.db;
+    final rows = await db.query(table, orderBy: 'nombre');
+    return rows.map(CatalogItem.fromMap).toList();
+  }
+
+  Future<CatalogItem> upsertCatalog(String table, CatalogItem item) async {
+    final db = await _local.db;
+    await db.insert(
+      table,
+      item.toMap(),
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+    if (remote) {
+      await supabase!.from(table).upsert({'id': item.id, 'nombre': item.nombre});
+    }
+    return item;
+  }
+
+  Future<void> deleteCatalog(String table, String id) async {
+    final db = await _local.db;
+    await db.delete(table, where: 'id = ?', whereArgs: [id]);
+    if (remote) {
+      await supabase!.from(table).delete().eq('id', id);
+    }
+  }
+
   Future<String?> signedFileUrl(String? path) async {
     if (path == null || path.isEmpty || !remote) return null;
     try {

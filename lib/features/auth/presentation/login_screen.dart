@@ -121,7 +121,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     const SizedBox(height: 12),
                     Text(
                       Env.hasSupabase
-                          ? 'Usa la contraseña asignada por tu supervisor.'
+                          ? 'La sesión permanece activa 7 días. '
+                              'Usa la contraseña asignada por tu supervisor.'
                           : 'Modo local de demostración. Clave inicial: ${Env.seedPassword}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(fontSize: 12, color: Colors.black54),

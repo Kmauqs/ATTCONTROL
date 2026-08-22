@@ -20,11 +20,11 @@ No todas las personas ven lo mismo:
 - **Empleado:** marca su asistencia, consulta sus horas y puede pedir permisos o vacaciones.
 - **Asesor y contratista:** marcan su asistencia y consultan sus horas. No piden permisos por esta aplicación.
 - **Supervisor de campo:** además puede ver al equipo, escanear el código del carnet para marcar a otra persona, gestionar personal, cargar foto y carnet digital, registrar sitios de trabajo, revisar permisos y generar reportes. Puede fichar su propia asistencia aunque no esté en un sitio autorizado.
-- **Administrador (Super Admin):** tiene lo anterior y además puede cambiar horarios, recargos y el calendario laboral. Tampoco necesita estar en un sitio autorizado para marcar su asistencia.
+- **Administrador (Super Admin):** tiene lo anterior y además puede cambiar horarios, recargos y el calendario laboral, crear cuadrillas y departamentos, y registrar localizaciones. Tampoco necesita estar en un sitio autorizado para marcar su asistencia.
 
 ## Cómo entrar
 
-En la pantalla de inicio se escribe el número de documento o el correo, y la contraseña que le asignó su supervisor. Si el teléfono tiene huella o reconocimiento facial, después del primer ingreso se puede entrar de esa forma.
+En la pantalla de inicio se escribe el número de documento o el correo, y la contraseña que le asignó su supervisor. La sesión queda abierta **7 días**. Si el teléfono tiene huella o reconocimiento facial, también se puede entrar de esa forma.
 
 Cada persona debe tener su propia contraseña. Si no la recuerda, debe pedir a su supervisor que se la asigne de nuevo desde la ficha de personal.
 
@@ -43,7 +43,9 @@ Los supervisores también pueden leer el código QR del carnet. Ese código debe
 
 Los supervisores ven el estado del día (presente, ausente o tarde) y pueden crear o editar fichas: documento, nombre, cargo, correo, RH, EPS, ARL, rol, foto y carnet digital en PDF. Al crear a alguien nuevo hay que definirle una contraseña de al menos ocho caracteres.
 
-En **Personal** también se agregan los sitios de trabajo (oficinas o proyecto), con un radio en metros. Quien no sea supervisor ni administrador debe estar dentro de alguno de esos puntos para fichar.
+En **Personal** o en **Ajustes** se agregan las localizaciones (oficinas o proyecto): nombre, dirección, coordenadas GPS, cliente y contrato (estos dos últimos son opcionales). Quien no sea supervisor ni administrador debe estar dentro del radio de alguno de esos puntos para fichar.
+
+Los supervisores y administradores pueden abrir el **Mapa** para ver dónde se marcaron las entradas.
 
 Cada persona puede ver su foto y abrir su carnet digital desde **Inicio** o tocando el ícono de carnet en la barra superior. Esa información está en la nube: la ve la propia persona, los supervisores y los administradores.
 
@@ -57,4 +59,4 @@ Cada persona puede ver su foto y abrir su carnet digital desde **Inicio** o toca
 
 La versión aparece debajo del logo al iniciar sesión y también al tocar el nombre **ATTCONTROL** en la barra superior. El detalle de cada versión está en el archivo `WHATSNEW.md`.
 
-La versión actual es **1.3.0**.
+La versión actual es **1.4.0**.
